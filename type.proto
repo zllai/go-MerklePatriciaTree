@@ -1,0 +1,17 @@
+syntax = "proto3";
+package mpt;
+
+message PersistNode {
+    oneof Content {
+        PersistFullNode full = 1;
+        PersistShortNode short = 2;
+        bytes value = 3;
+    }
+}
+message PersistFullNode {
+    repeated bytes Children= 1;
+}
+message PersistShortNode {
+    bytes Key = 1;
+    bytes value = 2;
+}
