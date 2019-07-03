@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type Trie struct {
@@ -250,4 +252,64 @@ func (t *Trie) Abort() {
 
 func (t *Trie) RootHash() []byte {
 	return t.root.Hash()
+}
+
+func (t *Trie) Serialize() ([]byte, error) {
+	persistTrie := &PersistTrie{}
+	newNode, err := t.persist(t.root, persistTrie)
+	if err != nil {
+		return nil, err
+	}
+	t.root = newNode
+	data, err := proto.Marshal(persistTrie)
+	return data, err
+}
+
+func (t *Trie) persist(node Node, persistTrie *PersistTrie) (Node, error) {
+	if node != nil {
+		if n, ok := node.(*HashNode); ok {
+			data, err := t.Get([]byte(*n))
+			if err != nil {
+				return node, err
+			}
+			newNode, err := DeserializeNode(data)
+			if err != nil {
+				return node, err
+			}
+			node = newNode
+		}
+		data := node.Serialize()
+		persistKV := PersistKV{
+			Key:   node.Hash(),
+			Value: data,
+		}
+		persistTrie.Pairs = append(persistTrie.Pairs, &persistKV)
+	}
+	switch n := node.(type) {
+	case *FullNode:
+		for i := 0; i < len(n.Children); i++ {
+			t.persist(n.Children[i], persistTrie)
+		}
+	case *ShortNode:
+		t.persist(n.Value, persistTrie)
+	}
+	return node, nil
+}
+
+func (t *Trie) Deserialize(data []byte) error {
+	persistTrie := PersistTrie{}
+	err := proto.Unmarshal(data, &persistTrie)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(persistTrie.Pairs); i++ {
+		t.kv.Put(persistTrie.Pairs[i].Key, persistTrie.Pairs[i].Value)
+	}
+	if len(persistTrie.Pairs) == 0 {
+		t.root = nil
+	} else {
+		rootNode := HashNode(persistTrie.Pairs[0].Key)
+		t.root = &rootNode
+	}
+	return nil
 }

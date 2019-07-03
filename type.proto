@@ -15,3 +15,12 @@ message PersistShortNode {
     bytes Key = 1;
     bytes value = 2;
 }
+
+message PersistTrie {
+    repeated PersistKV pairs = 1;
+}
+
+message PersistKV {
+    bytes key = 1;
+    bytes value = 2;
+}
