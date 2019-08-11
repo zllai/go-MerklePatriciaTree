@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/zllai/mpt/kvstore"
+	"github.com/zllai/go-MerklePatriciaTree/kvstore"
 )
 
 type Trie struct {

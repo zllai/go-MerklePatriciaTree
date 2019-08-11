@@ -1,4 +1,4 @@
-module github.com/zllai/mpt
+module github.com/zllai/go-MerklePatriciaTree
 
 go 1.12
 
