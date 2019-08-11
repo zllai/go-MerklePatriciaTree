@@ -1,4 +1,4 @@
-package mpt
+package kvstore
 
 import (
 	"encoding/hex"
@@ -6,13 +6,6 @@ import (
 	fmt "fmt"
 	"sync"
 )
-
-type KVStore interface {
-	Get([]byte) ([]byte, error)
-	Put([]byte, []byte)
-	Has([]byte) bool
-	Del([]byte) error
-}
 
 type MemKVStore struct {
 	store map[string][]byte
@@ -37,11 +30,12 @@ func (kv *MemKVStore) Get(key []byte) ([]byte, error) {
 	}
 }
 
-func (kv *MemKVStore) Put(key, value []byte) {
+func (kv *MemKVStore) Put(key, value []byte) error {
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 	keyHex := hex.EncodeToString(key)
 	kv.store[keyHex] = value
+	return nil
 }
 
 func (kv *MemKVStore) Has(key []byte) bool {
@@ -52,7 +46,7 @@ func (kv *MemKVStore) Has(key []byte) bool {
 	return ok
 }
 
-func (kv *MemKVStore) Del(key []byte) error {
+func (kv *MemKVStore) Delete(key []byte) error {
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 	keyHex := hex.EncodeToString(key)
@@ -63,3 +57,14 @@ func (kv *MemKVStore) Del(key []byte) error {
 	}
 	return nil
 }
+
+func (kv *MemKVStore) BatchPut(kvs [][2][]byte) error {
+	kv.lock.Lock()
+	defer kv.lock.Unlock()
+	for i := range kvs {
+		kv.Put(kvs[i][0], kvs[i][1])
+	}
+	return nil
+}
+
+func (kv *MemKVStore) Close() {}

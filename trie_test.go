@@ -3,10 +3,12 @@ package mpt
 import (
 	"bytes"
 	"testing"
+
+	"github.com/zllai/mpt/kvstore"
 )
 
 func TestPutGet(t *testing.T) {
-	kv := NewMemKVStore()
+	kv := kvstore.NewMemKVStore()
 	trie := New(nil, kv)
 	err := trie.Put([]byte("123456"), []byte("A"))
 	if err != nil {
@@ -90,7 +92,7 @@ func TestPutGet(t *testing.T) {
 }
 
 func TestPutCommitGet(t *testing.T) {
-	kv := NewMemKVStore()
+	kv := kvstore.NewMemKVStore()
 	trie := New(nil, kv)
 	err := trie.Put([]byte("123456"), []byte("A"))
 	if err != nil {
@@ -176,7 +178,7 @@ func TestPutCommitGet(t *testing.T) {
 }
 
 func TestPutAbort(t *testing.T) {
-	kv := NewMemKVStore()
+	kv := kvstore.NewMemKVStore()
 	trie := New(nil, kv)
 	err := trie.Put([]byte("123456"), []byte("A"))
 	if err != nil {
@@ -294,7 +296,7 @@ func TestNodeSerialize(t *testing.T) {
 }
 
 func TestSerializeDeserialize(t *testing.T) {
-	kv := NewMemKVStore()
+	kv := kvstore.NewMemKVStore()
 	trie := New(nil, kv)
 	err := trie.Put([]byte("123456"), []byte("A"))
 	if err != nil {
@@ -330,7 +332,7 @@ func TestSerializeDeserialize(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	kv = NewMemKVStore()
+	kv = kvstore.NewMemKVStore()
 	trie = New(nil, kv)
 	err = trie.Deserialize(data)
 	if err != nil {
@@ -388,4 +390,93 @@ func TestSerializeDeserialize(t *testing.T) {
 		t.Error("key 12345678 wrong")
 	}
 
+}
+
+func TestPutCommitGetLevelDB(t *testing.T) {
+	kv, err := kvstore.NewLevelDB("./test")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	trie := New(nil, kv)
+	err = trie.Put([]byte("123456"), []byte("A"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	err = trie.Put([]byte("134567"), []byte("B"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	err = trie.Put([]byte("123467"), []byte("C"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	err = trie.Put([]byte("234567"), []byte("D"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	err = trie.Put([]byte("1234567890"), []byte("E"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	err = trie.Put([]byte("12345678"), []byte("F"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	trie.Commit()
+	trie.Abort()
+	data, err := trie.Get([]byte("123456"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "A" {
+		t.Error("key 123456 wrong")
+	}
+	data, err = trie.Get([]byte("134567"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "B" {
+		t.Error("key 134567 wrong")
+	}
+	data, err = trie.Get([]byte("123467"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "C" {
+		t.Error("key 123467 wrong")
+	}
+	data, err = trie.Get([]byte("234567"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "D" {
+		t.Error("key 234567 wrong")
+	}
+	data, err = trie.Get([]byte("1234567890"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "E" {
+		t.Error("key 1234567890 wrong")
+	}
+
+	trie.Put([]byte("123456"), []byte("F"))
+	data, err = trie.Get([]byte("123456"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "F" {
+		t.Error("rewrite key 123456 wrong")
+	}
+	data, err = trie.Get([]byte("12345678"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if string(data) != "F" {
+		t.Error("key 12345678 wrong")
+	}
 }

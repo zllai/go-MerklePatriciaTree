@@ -5,6 +5,7 @@ import (
 	fmt "fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/zllai/mpt/kvstore"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -13,7 +14,7 @@ type (
 		Hash() []byte
 		CachedHash() []byte
 		Serialize() []byte
-		Save(KVStore)
+		Save(kvstore.KVStore)
 	}
 	FullNode struct {
 		Children [257]Node
@@ -48,14 +49,13 @@ func DeserializeNode(data []byte) (Node, error) {
 	switch v := persistNode.Content.(type) {
 	case *PersistNode_Full:
 		fullNode := FullNode{}
-		childrenLen := len(v.Full.Children)
-		if len(fullNode.Children) < len(v.Full.Children) {
-			childrenLen = len(fullNode.Children)
-		}
-		for i := 0; i < childrenLen; i++ {
-			if len(v.Full.Children) != 0 {
+		for i := 0; i < len(fullNode.Children); i++ {
+			if len(v.Full.Children[i]) != 0 {
 				child := HashNode(v.Full.Children[i])
 				fullNode.Children[i] = &child
+				if len([]byte(child)) == 0 {
+					return nil, errors.New("[Node] nil full node child")
+				}
 			}
 		}
 		hash := sha3.Sum256(data)
@@ -64,6 +64,9 @@ func DeserializeNode(data []byte) (Node, error) {
 	case *PersistNode_Short:
 		shortNode := ShortNode{}
 		shortNode.Key = v.Short.Key
+		if len(v.Short.Value) == 0 {
+			return nil, errors.New("[Node] nil short node value")
+		}
 		child := HashNode(v.Short.Value)
 		shortNode.Value = &child
 		hash := sha3.Sum256(data)
@@ -97,7 +100,7 @@ func (vn *ValueNode) Hash() []byte {
 	return vn.cache
 }
 
-func (vn *ValueNode) Save(kv KVStore) {
+func (vn *ValueNode) Save(kv kvstore.KVStore) {
 	data := vn.Serialize()
 	kv.Put(vn.cache, data)
 }
@@ -126,7 +129,7 @@ func (fn *FullNode) Hash() []byte {
 	return fn.cache
 }
 
-func (fn *FullNode) Save(kv KVStore) {
+func (fn *FullNode) Save(kv kvstore.KVStore) {
 	data := fn.Serialize()
 	kv.Put(fn.cache, data)
 }
@@ -151,11 +154,11 @@ func (sn *ShortNode) Hash() []byte {
 	return sn.cache
 }
 
-func (sn *ShortNode) Save(kv KVStore) {
+func (sn *ShortNode) Save(kv kvstore.KVStore) {
 	data := sn.Serialize()
 	kv.Put(sn.cache, data)
 }
 
-func (hn *HashNode) Hash() []byte      { return []byte(*hn) }
-func (hn *HashNode) Serialize() []byte { return nil }
-func (hn *HashNode) Save(kv KVStore)   {}
+func (hn *HashNode) Hash() []byte            { return []byte(*hn) }
+func (hn *HashNode) Serialize() []byte       { return nil }
+func (hn *HashNode) Save(kv kvstore.KVStore) {}
