@@ -229,6 +229,9 @@ func commonPrefix(a, b []byte) int {
 func (t *Trie) Commit() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	if t.root == nil {
+		return
+	}
 	t.commit(t.root)
 	t.oldRoot = t.root.CachedHash()
 }
